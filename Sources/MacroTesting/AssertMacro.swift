@@ -440,6 +440,48 @@ extension FixIt.Change {
   ///
   /// - SeeAlso: `FixIt.Change.edit`
   fileprivate func edit(in expansionContext: BasicMacroExpansionContext) -> SourceEdit {
+    #if canImport(SwiftSyntax601)
+    switch self {
+    case .replace(let oldNode, let newNode):
+      let start = expansionContext.position(of: oldNode.position, anchoredAt: oldNode)
+      let end = expansionContext.position(of: oldNode.endPosition, anchoredAt: oldNode)
+      return SourceEdit(
+        range: start..<end,
+        replacement: newNode.description
+      )
+
+    case .replaceLeadingTrivia(let token, let newTrivia):
+      let start = expansionContext.position(of: token.position, anchoredAt: token)
+      let end = expansionContext.position(
+        of: token.positionAfterSkippingLeadingTrivia,
+        anchoredAt: token
+      )
+      return SourceEdit(
+        range: start..<end,
+        replacement: newTrivia.description
+      )
+
+    case .replaceTrailingTrivia(let token, let newTrivia):
+      let start = expansionContext.position(
+        of: token.endPositionBeforeTrailingTrivia,
+        anchoredAt: token
+      )
+      let end = expansionContext.position(of: token.endPosition, anchoredAt: token)
+      return SourceEdit(
+        range: start..<end,
+        replacement: newTrivia.description
+      )
+
+    case .replaceChild(let replacingChildData):
+      let range = replacingChildData.replacementRange
+      let start = expansionContext.position(of: range.lowerBound, anchoredAt: replacingChildData.parent)
+      let end = expansionContext.position(of: range.upperBound, anchoredAt: replacingChildData.parent)
+      return SourceEdit(
+        range: start..<end,
+        replacement: replacingChildData.newChild.description
+      )
+    }
+    #else
     switch self {
     case .replace(let oldNode, let newNode):
       let start = expansionContext.position(of: oldNode.position, anchoredAt: oldNode)
@@ -471,6 +513,7 @@ extension FixIt.Change {
         replacement: newTrivia.description
       )
     }
+    #endif
   }
 }
 
